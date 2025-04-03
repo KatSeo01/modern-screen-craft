@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 
@@ -353,6 +354,88 @@ function getPayloadConfigFromPayload(
     : config[key as keyof typeof config]
 }
 
+// Add the missing chart components that are imported in DashboardView.tsx
+interface ChartProps {
+  data: Array<{ name: string; value: number }>;
+  className?: string;
+}
+
+// Area Chart Component
+const AreaChart: React.FC<ChartProps> = ({ data, className }) => {
+  const chartConfig = React.useMemo<ChartConfig>(() => ({
+    value: {
+      color: "#3b82f6",
+    },
+  }), []);
+
+  return (
+    <ChartContainer config={chartConfig} className={className}>
+      <RechartsPrimitive.AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+        <RechartsPrimitive.Area
+          dataKey="value"
+          stroke="#3b82f6"
+          fill="#3b82f6"
+          fillOpacity={0.2}
+          activeDot={{ r: 6 }}
+        />
+        <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+        <RechartsPrimitive.XAxis dataKey="name" />
+        <RechartsPrimitive.YAxis />
+        <RechartsPrimitive.Tooltip content={<ChartTooltipContent />} />
+      </RechartsPrimitive.AreaChart>
+    </ChartContainer>
+  );
+};
+
+// Bar Chart Component
+const BarChart: React.FC<ChartProps> = ({ data, className }) => {
+  const chartConfig = React.useMemo<ChartConfig>(() => ({
+    value: {
+      color: "#3b82f6",
+    },
+  }), []);
+
+  return (
+    <ChartContainer config={chartConfig} className={className}>
+      <RechartsPrimitive.BarChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+        <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+        <RechartsPrimitive.XAxis dataKey="name" />
+        <RechartsPrimitive.YAxis />
+        <RechartsPrimitive.Tooltip content={<ChartTooltipContent />} />
+        <RechartsPrimitive.Bar dataKey="value" fill="#3b82f6" />
+      </RechartsPrimitive.BarChart>
+    </ChartContainer>
+  );
+};
+
+// Line Chart Component
+const LineChart: React.FC<ChartProps> = ({ data, className }) => {
+  const chartConfig = React.useMemo<ChartConfig>(() => ({
+    value: {
+      color: "#3b82f6",
+    },
+  }), []);
+
+  return (
+    <ChartContainer config={chartConfig} className={className}>
+      <RechartsPrimitive.LineChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+        <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+        <RechartsPrimitive.XAxis dataKey="name" />
+        <RechartsPrimitive.YAxis />
+        <RechartsPrimitive.Tooltip content={<ChartTooltipContent />} />
+        <RechartsPrimitive.Line
+          type="monotone"
+          dataKey="value"
+          stroke="#3b82f6"
+          strokeWidth={2}
+          dot={{ r: 4 }}
+          activeDot={{ r: 6 }}
+        />
+      </RechartsPrimitive.LineChart>
+    </ChartContainer>
+  );
+};
+
 export {
   ChartContainer,
   ChartTooltip,
@@ -360,4 +443,8 @@ export {
   ChartLegend,
   ChartLegendContent,
   ChartStyle,
+  AreaChart,
+  BarChart,
+  LineChart
 }
+
