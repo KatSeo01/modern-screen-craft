@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, Users, Database, Settings, Shield } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const AdminPage: React.FC = () => {
   return (
@@ -223,3 +224,4 @@ const AdminPage: React.FC = () => {
 };
 
 export default AdminPage;
+
