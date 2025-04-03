@@ -3,7 +3,7 @@ import React from 'react';
 import Layout from '../components/Layout';
 import ProductListView from '../components/ProductListView';
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { Home, Grid3X3, Download, Upload, Compare } from "lucide-react";
+import { Home, Grid3X3, Download, Upload, ScanBarcode } from "lucide-react";
 import SearchBar from '../components/SearchBar';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -77,7 +77,7 @@ const ProductsPage: React.FC = () => {
               className="flex items-center gap-1"
               onClick={handleCompare}
             >
-              <Compare className="h-4 w-4" />
+              <ScanBarcode className="h-4 w-4" />
               {!isMobile && <span>Compare</span>}
             </Button>
           </div>

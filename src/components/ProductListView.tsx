@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Grid3X3, Plus, Filter, Download, Upload, Compare, CheckSquare, MoreHorizontal } from "lucide-react";
+import { Grid3X3, Plus, Filter, Download, Upload, ScanBarcode, CheckSquare, MoreHorizontal } from "lucide-react";
 import ProductList from './ProductList';
 import { Card, CardContent } from "@/components/ui/card";
 import { 
@@ -125,7 +125,7 @@ const ProductListView: React.FC<ProductListViewProps> = ({ filterCategory }) => 
             </Button>
             
             <Button variant="outline" className="border-gray-300 text-gray-700 flex gap-2">
-              <Compare className="h-4 w-4" />
+              <ScanBarcode className="h-4 w-4" />
               <span>Compare</span>
             </Button>
           </div>
