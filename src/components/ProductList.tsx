@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, Search, X, ExternalLink } from "lucide-react";
+import { ChevronDown, Search, X, ExternalLink, Edit, Star, Copy } from "lucide-react";
 import { 
   Table, 
   TableBody, 
@@ -11,6 +11,16 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from "@/components/ui/pagination";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Mock data based on the image
 const mockProducts = [
@@ -26,15 +36,76 @@ const mockProducts = [
   { id: '100032A', packageCode: '100032A-00001', packageCatalogue: '100032AT', packageSchedule: 'NR', nappiCode: '498416', materialDescription: 'Chest Cath Sil Fr32 100032AT', description: 'Chest Cath Sil Fr32 100032AT', classification: 'Straight Silicone Chest Catheter' },
 ];
 
-const ProductList: React.FC = () => {
+interface ProductListProps {
+  filterCategory?: string;
+  selectable?: boolean;
+  onSelectionChange?: (selectedIds: string[]) => void;
+}
+
+const ProductList: React.FC<ProductListProps> = ({ 
+  filterCategory, 
+  selectable = false,
+  onSelectionChange
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const isMobile = useIsMobile();
   
-  const filteredProducts = mockProducts.filter(product => 
-    product.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.classification.toLowerCase().includes(searchTerm.toLowerCase())
+  const itemsPerPage = 5;
+  
+  // Filter products based on search term and category filter
+  const filteredProducts = mockProducts.filter(product => {
+    const matchesSearch = !searchTerm || 
+      product.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.classification.toLowerCase().includes(searchTerm.toLowerCase());
+      
+    const matchesCategory = !filterCategory || 
+      product.classification.toLowerCase() === filterCategory.toLowerCase();
+      
+    return matchesSearch && matchesCategory;
+  });
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage, 
+    currentPage * itemsPerPage
   );
+  
+  // Handle selection changes
+  useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(selectedItems);
+    }
+  }, [selectedItems, onSelectionChange]);
+  
+  const toggleItemSelection = (id: string) => {
+    setSelectedItems(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(item => item !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+  
+  const toggleSelectAll = () => {
+    if (selectedItems.length === paginatedProducts.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(paginatedProducts.map(product => product.id));
+    }
+  };
+  
+  // Handle pagination
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   return (
     <div className="bg-white shadow rounded-lg">
@@ -97,42 +168,111 @@ const ProductList: React.FC = () => {
         <Table>
           <TableHeader>
             <TableRow className="bg-healthcare-700 text-white">
+              {selectable && (
+                <TableHead className="text-white w-10">
+                  <Checkbox 
+                    checked={selectedItems.length === paginatedProducts.length && paginatedProducts.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-healthcare-700"
+                  />
+                </TableHead>
+              )}
               <TableHead className="text-white">Product Code</TableHead>
-              <TableHead className="text-white">Package Code</TableHead>
-              <TableHead className="text-white">Package Catalogue</TableHead>
-              <TableHead className="text-white">Package Schedule</TableHead>
+              {!isMobile && <TableHead className="text-white">Package Code</TableHead>}
+              {!isMobile && <TableHead className="text-white">Package Catalogue</TableHead>}
+              {!isMobile && <TableHead className="text-white">Package Schedule</TableHead>}
               <TableHead className="text-white">NAPPI Code</TableHead>
               <TableHead className="text-white">Material Description</TableHead>
-              <TableHead className="text-white">Description</TableHead>
+              {!isMobile && <TableHead className="text-white">Description</TableHead>}
               <TableHead className="text-white">Classification Description</TableHead>
+              {selectable && <TableHead className="text-white w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredProducts.map((product) => (
+            {paginatedProducts.map((product) => (
               <TableRow key={product.id} className="hover:bg-gray-50 border-b border-gray-200">
+                {selectable && (
+                  <TableCell>
+                    <Checkbox 
+                      checked={selectedItems.includes(product.id)}
+                      onCheckedChange={() => toggleItemSelection(product.id)}
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-medium">{product.id}</TableCell>
-                <TableCell>{product.packageCode}</TableCell>
-                <TableCell>{product.packageCatalogue}</TableCell>
-                <TableCell>{product.packageSchedule}</TableCell>
+                {!isMobile && <TableCell>{product.packageCode}</TableCell>}
+                {!isMobile && <TableCell>{product.packageCatalogue}</TableCell>}
+                {!isMobile && <TableCell>{product.packageSchedule}</TableCell>}
                 <TableCell>{product.nappiCode}</TableCell>
                 <TableCell>{product.materialDescription}</TableCell>
-                <TableCell>{product.description}</TableCell>
+                {!isMobile && <TableCell>{product.description}</TableCell>}
                 <TableCell>{product.classification}</TableCell>
+                {selectable && (
+                  <TableCell>
+                    <div className="flex space-x-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Star className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
+            {paginatedProducts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={selectable ? (isMobile ? 6 : 10) : (isMobile ? 5 : 9)} className="text-center py-6">
+                  No products found
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
       
       <div className="p-3 border-t border-gray-200 text-sm text-gray-600 flex justify-between items-center">
         <div>
-          <button className="p-1 rounded hover:bg-gray-100">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M15.707 4.293a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-5-5a1 1 0 011.414-1.414L10 8.586l4.293-4.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </button>
+          Displaying items {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length}
         </div>
-        <div>Displaying items 1 - {filteredProducts.length} of {mockProducts.length}</div>
+        
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} />
+            </PaginationItem>
+            
+            {Array.from({ length: Math.min(totalPages, 5) }).map((_, index) => {
+              const pageNumber = index + 1;
+              return (
+                <PaginationItem key={pageNumber}>
+                  <PaginationLink isActive={currentPage === pageNumber} onClick={() => goToPage(pageNumber)}>
+                    {pageNumber}
+                  </PaginationLink>
+                </PaginationItem>
+              );
+            })}
+            
+            {totalPages > 5 && currentPage < totalPages - 2 && (
+              <>
+                <PaginationItem>
+                  <PaginationLink disabled>...</PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink onClick={() => goToPage(totalPages)}>{totalPages}</PaginationLink>
+                </PaginationItem>
+              </>
+            )}
+            
+            <PaginationItem>
+              <PaginationNext onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       </div>
     </div>
   );

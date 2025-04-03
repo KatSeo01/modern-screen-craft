@@ -4,11 +4,14 @@ import Layout from '../components/Layout';
 import DashboardView from '../components/DashboardView';
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink } from "@/components/ui/breadcrumb";
 import { Home } from "lucide-react";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const DashboardPage: React.FC = () => {
+  const isMobile = useIsMobile();
+  
   return (
     <Layout>
-      <div className="p-4 fade-in">
+      <div className={`${isMobile ? 'p-2' : 'p-4'} fade-in`}>
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
