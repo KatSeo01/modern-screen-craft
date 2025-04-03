@@ -1,29 +1,302 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Users, Database, Settings, Shield } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertCircle, Users, Database, Settings, Shield, Search, Folder, FileText, ChevronsRight, Menu } from "lucide-react";
+import { 
+  Dialog, 
+  DialogTrigger, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+// Import DND libraries
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable } from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+
+// Mock classification data
+const classifications = [
+  {
+    id: "ethical-items",
+    name: "Ethical Items",
+    children: [
+      { id: "ethicals", name: "Ethicals" },
+      { id: "inhalation-anaesthetics", name: "Inhalation Anaesthetics" },
+      { id: "large-volume-parenterals", name: "Large Volume Parenterals" }
+    ]
+  },
+  {
+    id: "retail",
+    name: "Retail",
+    children: [
+      { id: "retail-ethical", name: "Retail Ethical" },
+      { id: "retail-surgical", name: "Retail Surgical" }
+    ]
+  },
+  {
+    id: "surgical-consumable",
+    name: "Surgical Consumable Products",
+    children: [
+      { id: "cardio-vascular", name: "Cardio Vascular" },
+      { id: "endoscopic-surgery", name: "Endoscopic Surgery & Internal Stapling Devices" },
+      { id: "general-surgical", name: "General Surgical Consumables" },
+      { id: "implantable-orthopaedic", name: "Implantable Orthopaedic Products Excluding Prosthesis" },
+      { id: "neurosurgical", name: "Neurosurgical Products" },
+      { id: "prosthesis", name: "Prosthesis Products" },
+      { id: "wound-closure", name: "Wound Closure Products" }
+    ]
+  }
+];
+
+// DraggableItem component
+interface DraggableItemProps {
+  id: string;
+  name: string;
+  depth?: number;
+}
+
+const DraggableItem = ({ id, name, depth = 0 }: DraggableItemProps) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id,
+    data: { name, depth }
+  });
+  
+  const paddingLeft = depth * 20 + 'px';
+  
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`p-2 mb-1 rounded cursor-move ${
+        isDragging ? 'opacity-50 bg-gray-100' : 'hover:bg-gray-50'
+      }`}
+      style={{ paddingLeft }}
+    >
+      <div className="flex items-center">
+        <FileText className="mr-2 h-4 w-4 text-gray-500" />
+        <span>{name}</span>
+        <Menu className="ml-auto h-4 w-4 text-gray-400" />
+      </div>
+    </div>
+  );
+};
+
+// Droppable area component
+interface DroppableAreaProps {
+  id: string;
+  children: React.ReactNode;
+}
+
+const DroppableArea = ({ id, children }: DroppableAreaProps) => {
+  const { isOver, setNodeRef } = useDroppable({
+    id
+  });
+  
+  return (
+    <div
+      ref={setNodeRef}
+      className={`border rounded-md p-3 h-full overflow-auto ${
+        isOver ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200'
+      }`}
+    >
+      {children}
+    </div>
+  );
+};
+
+// Classification Group component
+interface ClassificationGroupProps {
+  data: {
+    id: string;
+    name: string;
+    children: { id: string; name: string }[];
+  };
+  area: 'source' | 'destination';
+}
+
+const ClassificationGroup = ({ data, area }: ClassificationGroupProps) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  
+  return (
+    <div className="mb-3">
+      <div 
+        className="flex items-center mb-1 cursor-pointer" 
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <Folder className="mr-2 h-4 w-4 text-blue-600" />
+        <span className="font-medium">{data.name}</span>
+        <div className={`ml-2 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+          <ChevronsRight className="h-4 w-4" />
+        </div>
+      </div>
+      
+      {isExpanded && (
+        <div className="ml-2">
+          {data.children.map(item => (
+            <DraggableItem 
+              key={`${area}-${item.id}`} 
+              id={`${area}-${item.id}`} 
+              name={item.name} 
+              depth={1} 
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Confirmation Dialog Component
+interface ConfirmationDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  source: string;
+  destination: string;
+}
+
+const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  source, 
+  destination 
+}) => {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirm Classification Move</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to move the following classification?
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="py-4">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="font-medium w-24">Source:</div>
+              <div className="bg-gray-100 p-2 rounded flex-1">{source}</div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <div className="font-medium w-24">Destination:</div>
+              <div className="bg-gray-100 p-2 rounded flex-1">{destination}</div>
+            </div>
+          </div>
+        </div>
+        
+        <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Warning</AlertTitle>
+          <AlertDescription>
+            This action will move the classification and all its associated products.
+          </AlertDescription>
+        </Alert>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={onConfirm}>Confirm Move</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const AdminPage: React.FC = () => {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("classifications");
+  const [draggedItem, setDraggedItem] = useState<{ id: string; name: string } | null>(null);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [moveDetails, setMoveDetails] = useState({ source: "", destination: "" });
+  
+  // Handle drag start
+  const handleDragStart = (event: DragStartEvent) => {
+    const { id } = event.active;
+    const itemName = event.active.data.current?.name || '';
+    setDraggedItem({ id: id as string, name: itemName });
+  };
+  
+  // Handle drag end
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    setDraggedItem(null);
+    
+    if (over && active.id !== over.id) {
+      // Extract the actual item names without the area prefix
+      const sourceId = (active.id as string).split('-')[1];
+      const destinationId = (over.id as string).split('-')[0];
+      
+      // Find the actual names
+      let sourceName = '';
+      let destinationName = '';
+      
+      classifications.forEach(group => {
+        group.children.forEach(item => {
+          if (item.id === sourceId) {
+            sourceName = item.name;
+          }
+        });
+      });
+      
+      if (destinationId === 'source') {
+        destinationName = 'Source Area';
+      } else if (destinationId === 'destination') {
+        destinationName = 'Destination Area';
+      }
+      
+      // Set the move details and open confirmation dialog
+      setMoveDetails({
+        source: sourceName,
+        destination: destinationName
+      });
+      
+      setConfirmationOpen(true);
+    }
+  };
+  
+  // Handle confirmation
+  const handleConfirmMove = () => {
+    setConfirmationOpen(false);
+    
+    toast({
+      title: "Classification moved",
+      description: `Successfully moved "${moveDetails.source}" to "${moveDetails.destination}"`,
+    });
+  };
+  
   return (
     <Layout>
-      <div className="p-6">
+      <div className="p-6 fade-in">
         <h1 className="text-2xl font-bold mb-6 text-healthcare-800">Administration</h1>
         
-        <Tabs defaultValue="users">
+        <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-4 w-full max-w-2xl mb-6">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               <span>Users</span>
             </TabsTrigger>
-            <TabsTrigger value="products" className="flex items-center gap-2">
+            <TabsTrigger value="classifications" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
-              <span>Products</span>
+              <span>Classifications</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -100,30 +373,101 @@ const AdminPage: React.FC = () => {
             </Card>
           </TabsContent>
           
-          <TabsContent value="products">
+          <TabsContent value="classifications">
             <Card>
-              <CardHeader className="bg-healthcare-700 text-white rounded-t-lg">
-                <CardTitle>Product Administration</CardTitle>
-                <CardDescription className="text-healthcare-100">Manage product categories and attributes</CardDescription>
+              <CardHeader className="bg-healthcare-700 text-white rounded-t-lg flex flex-row items-center gap-3">
+                <div className="bg-white p-1.5 rounded">
+                  <div className="text-healthcare-700 w-5 h-5">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5z" />
+                      <path d="M2 10h20" />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <CardTitle>Configure Classification Hierarchy</CardTitle>
+                  <CardDescription className="text-healthcare-100">Manage and organize product classifications</CardDescription>
+                </div>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="text-lg font-medium mb-4">Product Categories</h3>
-                      <div className="space-y-3">
-                        <Button className="bg-healthcare-700 hover:bg-healthcare-800 w-full">Manage Categories</Button>
-                        <Button variant="outline" className="w-full">Import Categories</Button>
+                <div>
+                  <div className="flex items-center mb-4">
+                    <Button variant="outline" className="bg-gray-200 hover:bg-gray-300 border-gray-300">
+                      Move Classification
+                    </Button>
+                    <span className="text-sm text-gray-500 ml-4">
+                      Drag items from the source to the destination to move them
+                    </span>
+                  </div>
+                  
+                  <DndContext 
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                    modifiers={[restrictToVerticalAxis]}
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="text-lg font-medium text-healthcare-700">Source</h3>
+                          <div className="relative w-full max-w-sm ml-4">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Enter Classification Description or Code..."
+                              className="pl-9"
+                            />
+                          </div>
+                        </div>
+                        
+                        <DroppableArea id="source">
+                          {classifications.map(group => (
+                            <ClassificationGroup 
+                              key={`source-${group.id}`} 
+                              data={group} 
+                              area="source" 
+                            />
+                          ))}
+                        </DroppableArea>
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="text-lg font-medium text-healthcare-700">Destination</h3>
+                          <div className="relative w-full max-w-sm ml-4">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Enter Classification Description or Code..."
+                              className="pl-9"
+                            />
+                          </div>
+                        </div>
+                        
+                        <DroppableArea id="destination">
+                          {classifications.map(group => (
+                            <ClassificationGroup 
+                              key={`destination-${group.id}`} 
+                              data={group} 
+                              area="destination" 
+                            />
+                          ))}
+                        </DroppableArea>
                       </div>
                     </div>
                     
-                    <div>
-                      <h3 className="text-lg font-medium mb-4">Product Attributes</h3>
-                      <div className="space-y-3">
-                        <Button className="bg-healthcare-700 hover:bg-healthcare-800 w-full">Manage Attributes</Button>
-                        <Button variant="outline" className="w-full">Import Attributes</Button>
-                      </div>
-                    </div>
+                    <DragOverlay>
+                      {draggedItem ? (
+                        <div className="p-2 bg-white border rounded shadow-md">
+                          <div className="flex items-center">
+                            <FileText className="mr-2 h-4 w-4 text-gray-500" />
+                            <span>{draggedItem.name}</span>
+                          </div>
+                        </div>
+                      ) : null}
+                    </DragOverlay>
+                  </DndContext>
+                  
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline">Add</Button>
+                    <Button variant="outline">Edit</Button>
                   </div>
                 </div>
               </CardContent>
@@ -219,9 +563,16 @@ const AdminPage: React.FC = () => {
           </TabsContent>
         </Tabs>
       </div>
+      
+      <ConfirmationDialog 
+        isOpen={confirmationOpen}
+        onClose={() => setConfirmationOpen(false)}
+        onConfirm={handleConfirmMove}
+        source={moveDetails.source}
+        destination={moveDetails.destination}
+      />
     </Layout>
   );
 };
 
 export default AdminPage;
-
